@@ -42,6 +42,35 @@ async function forwardToFastAPI(userId, text) {
 
 // WHATSAPP WEBHOOK VERIFICATION (GET)
 
+/**
+ * @openapi
+ * /webhook:
+ *   get:
+ *     summary: Verify WhatsApp Webhook Subscription
+ *     description: Meta sends a GET request to verify your webhook using the VERIFY_TOKEN.
+ *     parameters:
+ *       - in: query
+ *         name: hub.mode
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: hub.verify_token
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: hub.challenge
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Webhook verified successfully.
+ *       403:
+ *         description: Verification failed. Invalid token.
+ */
+
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -57,6 +86,39 @@ app.get("/webhook", (req, res) => {
 });
 
 // WHATSAPP WEBHOOK RECEIVER (POST)
+
+/**
+ * @openapi
+ * /webhook:
+ *   post:
+ *     summary: Receive WhatsApp webhook events
+ *     description: Handles incoming WhatsApp Cloud API messages and forwards text messages to FastAPI.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             example:
+ *               object: "whatsapp_business_account"
+ *               entry:
+ *                 - id: "WHATSAPP_BUSINESS_ID"
+ *                   changes:
+ *                     - value:
+ *                         messages:
+ *                           - from: "62812345678"
+ *                             id: "wamid.ID"
+ *                             timestamp: "1694000000"
+ *                             text:
+ *                               body: "Hello"
+ *                             type: "text"
+ *                       field: "messages"
+ *     responses:
+ *       200:
+ *         description: Webhook processed successfully.
+ *       500:
+ *         description: Internal server error.
+ */
 
 app.post("/webhook", async (req, res) => {
   try {
@@ -98,6 +160,21 @@ app.post("/webhook", async (req, res) => {
 
 // HEALTH CHECK
 
+/**
+ * @openapi
+ * /:
+ *   get:
+ *     summary: Health check for WA Backend
+ *     description: Returns basic service info and FastAPI forwarding status.
+ *     responses:
+ *       200:
+ *         description: Service is running.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
+
 app.get("/", (req, res) => {
   res.json({
     status: "running",
@@ -108,6 +185,30 @@ app.get("/", (req, res) => {
   });
 });
 
+// SWAGGER DOCUMENTATION
+const swaggerUi = require("swagger-ui-express");
+const swaggerJsDoc = require("swagger-jsdoc");
+
+const swaggerSpec = swaggerJsDoc({
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "WA Backend Webhook API",
+      version: "1.0.0",
+      description:
+        "Documentation for WhatsApp Webhook Backend that receives messages from WhatsApp Cloud API and forwards them to a FastAPI RAG engine."
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`,
+        description: "Local Development Server"
+      }
+    ]
+  },
+  apis: ["./server.js"]
+});
+
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.listen(PORT, () => {
   console.log("-------------------------------------------");
